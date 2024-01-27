@@ -108,6 +108,36 @@ function Input:mount()
   ---@deprecated
   props.on_submit = function(value)
     self._.pending_submit_value = value
+    local position_win = self._.position.win
+    local target_cursor = vim.api.nvim_win_is_valid(position_win) and vim.api.nvim_win_get_cursor(position_win) or nil
+    local prompt_mode = vim.fn.mode()
+    if self._.loading then
+      return
+    end
+
+    self._.loading = true
+
+    local pending_submit_value = self._.pending_submit_value
+
+    vim.schedule(function()
+      -- NOTE: on prompt-buffer normal mode <CR> causes neovim to enter insert mode.
+      --  ref: https://github.com/neovim/neovim/blob/d8f5f4d09078/src/nvim/normal.c#L5327-L5333
+      if (pending_submit_value and prompt_mode == "n") or prompt_mode == "i" then
+        vim.api.nvim_command("stopinsert")
+      end
+
+      if not self._.disable_cursor_position_patch and target_cursor ~= nil then
+        patch_cursor_position(target_cursor, pending_submit_value and prompt_mode == "n")
+      end
+
+      if pending_submit_value then
+        self._.pending_submit_value = nil
+        self._.on_submit(pending_submit_value)
+      else
+        self._.on_close()
+      end
+      self._.loading = false
+    end)
   end
 
   vim.fn.prompt_setcallback(self.bufnr, props.on_submit)
