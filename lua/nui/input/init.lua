@@ -108,7 +108,6 @@ function Input:mount()
   ---@deprecated
   props.on_submit = function(value)
     self._.pending_submit_value = value
-    self:unmount()
   end
 
   vim.fn.prompt_setcallback(self.bufnr, props.on_submit)
